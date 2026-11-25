@@ -10,12 +10,12 @@
 
 | Поле | Значення |
 |---|---|
-| ПІБ | |
-| Група | |
-| Ідентифікатор (`sNN`) | |
-| Дата виконання | |
-| Середовище | <!-- GitHub Codespaces або інше; якщо інше, вказати яке --> |
-| Версія `dig` | <!-- перший рядок виводу команди dig -v у терміналі стенда --> |
+| ПІБ | Кіріяк Павло Олександрович |
+| Група | 1 |
+| Ідентифікатор (`sNN`) | se-1-05 |
+| Дата виконання | 24–25.11.2026 |
+| Середовище | GitHub Codespaces |
+| Версія `dig` | DiG 9.18.39-0ubuntu0.24.04.9-Ubuntu |
 
 ## Параметри варіанта
 
@@ -23,14 +23,14 @@
 
 | Параметр | Значення |
 |---|---|
-| `$TTL`, с | |
-| TTL запису SOA, с | |
-| Поле `minimum` SOA, с | |
-| Псевдонім (CNAME на `www`) | |
-| Другий хост і його TTL, с | |
-| Пріоритет MX | |
-| Токен TXT | |
-| Ім'я для завдання 5 | |
+| `$TTL`, с | 75 |
+| TTL запису SOA, с | 120 |
+| Поле `minimum` SOA, с | 20 |
+| Псевдонім (CNAME на `www`) | api |
+| Другий хост і його TTL, с | lab, 40 с |
+| Пріоритет MX | 20 |
+| Токен TXT | lab-token=4e049af2 |
+| Ім'я для завдання 5 | new-fuspt.se-1-05.lab |
 
 ## Завдання 1. Складові URI
 
@@ -40,135 +40,392 @@
 
 | № | scheme | userinfo | host | port | path | query | fragment |
 |---|---|---|---|---|---|---|---|
-| 1 | | | | | | | |
-| 2 | | | | | | | |
-| 3 | | | | | | | |
-| 4 | | | | | | | |
-| 5 | | | | | | | |
+| 1 | http | — | www.se-1-05.lab | 80 (за замовч.) | /media/catalog | page=17&lang=x | top |
+| 2 | http | — | api.se-1-05.lab | 80 | /catalog/ | page=%D0%BA%D0%B8%D1%97%D0%B2 | — |
+| 3 | http | user:pass | lab.se-1-05.lab | 80 (за замовч.) | /media | — | comments |
+| 4 | https | — | www.se-1-05.lab | 4443 | /media/../catalog | — | — |
+| 5 | mailto | — | — | — | admin@se-1-05.lab | subject=media | — |
 
 | № | Ім'я, що запитується в DNS | Заголовок `Host` | Ціль запиту (request target) |
 |---|---|---|---|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
+| 1 | www.se-1-05.lab | www.se-1-05.lab | /media/catalog?page=17&lang=x |
+| 2 | api.se-1-05.lab | api.se-1-05.lab | /catalog/?page=%D0%BA%D0%B8%D1%97%D0%B2 |
+| 3 | lab.se-1-05.lab | lab.se-1-05.lab | /media |
+| 4 | www.se-1-05.lab | www.se-1-05.lab:4443 | /catalog |
+| 5 | — | — | — |
 
-Декодоване значення параметра URI 2:
+Декодоване значення параметра URI 2: `page=київ`.
 
 Чому URI 5 не має складової host, хоча містить символ `@`:
 
+URI зі схемою mailto не містить компонента authority. Символ @ є частиною адреси електронної пошти та відокремлює локальне ім'я користувача від домену пошти, а не userinfo від host.
+
 ### 1.2. Перевірка (після завдання 3)
 
-<!-- Для URI 1–3: рядки запиту (починаються з ">") і тіло відповіді сервера. -->
+Початкові запити curl завершилися помилкою curl (6) Could not resolve host, оскільки контейнер використовував системний DNS Docker 127.0.0.11. Для перевірки HTTP-запитів використано параметр --resolve.
+
+URI 1:
 
 ```text
+> GET /media/catalog?page=17&lang=x HTTP/1.1
+> Host: www.se-1-05.lab
+> User-Agent: curl/8.5.0
+> Accept: */*
 
+< HTTP/1.1 200 OK
+
+server: web-b
+Host: www.se-1-05.lab
+request URI: /media/catalog?page=17&lang=x
+path: /media/catalog
+query: page=17&lang=x
+client: 10.53.0.53
 ```
 
-Значення заголовка `Authorization` і результат декодування:
+URI 2:
 
 ```text
+> GET /catalog/?page=%D0%BA%D0%B8%D1%97%D0%B2 HTTP/1.1
+> Host: api.se-1-05.lab
+> User-Agent: curl/8.5.0
+> Accept: */*
 
+< HTTP/1.1 200 OK
+
+server: web-b
+Host: api.se-1-05.lab
+request URI: /catalog/?page=%D0%BA%D0%B8%D1%97%D0%B2
+path: /catalog/
+query: page=%D0%BA%D0%B8%D1%97%D0%B2
+client: 10.53.0.53
 ```
 
-URI 4: етап, на якому запит не вдається (пошук імені / TCP / TLS), і рядки виводу, що це підтверджують:
+URI 3:
 
 ```text
+> GET /media HTTP/1.1
+> Host: lab.se-1-05.lab
+> Authorization: Basic dXNlcjpwYXNz
+> User-Agent: curl/8.5.0
+> Accept: */*
 
+< HTTP/1.1 200 OK
+
+server: web-b
+Host: lab.se-1-05.lab
+request URI: /media
+path: /media
+query:
+client: 10.53.0.53
+```
+
+Значення заголовка Authorization і результат декодування:
+
+```text
+Authorization: Basic dXNlcjpwYXNz
+Base64: dXNlcjpwYXNz
+Decoded: user:pass
+```
+
+Дані авторизації закодовані у форматі Base64. Це кодування, а не шифрування.
+
+URI 4:
+
+```text
+* Trying 10.53.0.81:4443...
+* connect to 10.53.0.81 port 4443 from 10.53.0.53 port 38602 failed: Connection refused
+* Failed to connect to www.se-1-05.lab port 4443 after 0 ms: Couldn't connect to server
+* Closing connection
+curl: (7) Failed to connect to www.se-1-05.lab port 4443 after 0 ms: Couldn't connect to server
+```
+
+Помилка виникла на етапі встановлення TCP-з'єднання з портом 4443. До встановлення TLS-з'єднання справа не дійшла.
+
+Звичайний HTTP-запит:
+
+```text
+> GET /catalog HTTP/1.1
+> Host: www.se-1-05.lab
+
+< HTTP/1.1 200 OK
+
+request URI: /catalog
+path: /catalog
+```
+
+Запит із параметром --path-as-is:
+
+```text
+> GET /media/../catalog HTTP/1.1
+> Host: www.se-1-05.lab
+
+< HTTP/1.1 200 OK
+
+request URI: /media/../catalog
+path: /catalog
 ```
 
 | Запит | `request URI`, отриманий сервером | `path`, отриманий сервером |
 |---|---|---|
-| звичайний | | |
-| `--path-as-is` | | |
+| звичайний | /catalog | /catalog |
+| `--path-as-is` | /media/../catalog | /catalog |
 
 Розбіжності між URI та тим, що отримав сервер, і їх пояснення:
+
+1. Фрагменти #top та #comments не передаються вебсерверу.
+2. Параметри query передаються у складі цілі HTTP-запиту.
+3. Значення параметра URI 2 передається у відсотковому кодуванні та після декодування має значення «київ».
+4. Дані userinfo передаються через заголовок Authorization.
+5. Порт 80 не зазначається у заголовку Host, оскільки є стандартним для HTTP.
+6. За звичайного запиту curl нормалізує шлях /media/../catalog до /catalog.
+7. Параметр --path-as-is зберігає початковий шлях у HTTP-запиті, але вебсервер nginx самостійно нормалізує його до /catalog.
 
 ## Завдання 2. Проходження ієрархії вручну
 
 ```text
+dig @10.53.0.2 ns.se-1-05.lab A +norec
 
+;; status: NOERROR
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 2
+
+;; AUTHORITY SECTION:
+lab. 172800 IN NS ns1.nic.lab.
+
+;; ADDITIONAL SECTION:
+ns1.nic.lab. 172800 IN A 10.53.0.3
+
+;; Query time: 161 msec
+
+dig @10.53.0.3 ns.se-1-05.lab A +norec
+
+;; status: NOERROR
+;; flags: qr; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 2
+
+;; AUTHORITY SECTION:
+se-1-05.lab. 3600 IN NS ns.se-1-05.lab.
+
+;; ADDITIONAL SECTION:
+ns.se-1-05.lab. 3600 IN A 10.53.1.1
+
+;; Query time: 82 msec
+
+dig @10.53.1.1 ns.se-1-05.lab A +norec
+
+;; status: NOERROR
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 1, ADDITIONAL: 1
+
+;; ANSWER SECTION:
+ns.se-1-05.lab. 75 IN A 10.53.1.1
+
+;; AUTHORITY SECTION:
+se-1-05.lab. 75 IN NS ns.se-1-05.lab.
+
+;; Query time: 0 msec
 ```
 
 | Сервер | status | flags | ANSWER | AUTHORITY | ADDITIONAL |
 |---|---|---|---|---|---|
-| 10.53.0.2 | | | | | |
-| 10.53.0.3 | | | | | |
-| 10.53.1.1 | | | | | |
+| 10.53.0.2 | NOERROR | qr | 0 | 1 | 2 |
+| 10.53.0.3 | NOERROR | qr | 0 | 1 | 2 |
+| 10.53.1.1 | NOERROR | qr aa | 1 | 1 | 1 |
 
-Вивід `dig ns.sNN.lab A +trace`:
+Вивід `dig ns.se-1-05.lab A +trace`:
 
 ```text
+. 86400 IN NS a.root-servers.net.
+;; Received 59 bytes from 10.53.0.53#53(10.53.0.53) in 322 ms
 
+lab. 172800 IN NS ns1.nic.lab.
+;; Received 115 bytes from 10.53.0.2#53(a.root-servers.net) in 81 ms
+
+se-1-05.lab. 3600 IN NS ns.se-1-05.lab.
+;; Received 101 bytes from 10.53.0.3#53(ns1.nic.lab) in 41 ms
+
+ns.se-1-05.lab. 75 IN A 10.53.1.1
+se-1-05.lab. 75 IN NS ns.se-1-05.lab.
+;; Received 101 bytes from 10.53.1.1#53(ns.se-1-05.lab) in 0 ms
 ```
 
 | Запит | TTL запису NS | Прапорець `aa` | Секція, у якій міститься NS |
 |---|---|---|---|
-| `dig @10.53.0.3 sNN.lab NS +norec` | | | |
-| `dig @10.53.1.1 sNN.lab NS +norec` | | | |
+| `dig @10.53.0.3 se-1-05.lab NS +norec` | 3600 | Ні | AUTHORITY |
+| `dig @10.53.1.1 se-1-05.lab NS +norec` | 75 | Так | ANSWER |
 
-1. Які відповіді є відсиланнями і за якими ознаками це визначено?
+**1. Які відповіді є відсиланнями і за якими ознаками це визначено?**
 
-2. Для чого у відповіді TLD присутній запис у секції ADDITIONAL і що сталося б, якби його не було?
+Відсиланнями є відповіді серверів 10.53.0.2 та 10.53.0.3. У них відсутні записи в секції ANSWER, немає прапорця aa, а в секції AUTHORITY містяться записи NS, які вказують на наступний DNS-сервер.
 
-3. Яка з двох копій запису NS є авторитативною і чому?
+**2. Для чого у відповіді TLD присутній запис у секції ADDITIONAL і що сталося б, якби його не було?**
+
+У секції ADDITIONAL міститься IP-адреса наступного DNS-сервера. Такий запис називається glue-записом. Він дозволяє одразу звернутися до авторитативного сервера. Без нього виникла б проблема циклічної залежності під час пошуку IP-адреси цього сервера.
+
+**3. Яка з двох копій запису NS є авторитативною і чому?**
+
+Авторитативною є копія запису NS, отримана від сервера 10.53.1.1. Це підтверджується наявністю прапорця aa та розміщенням запису NS у секції ANSWER. TTL цього запису становить 75 секунд.
+
+
 
 ## Завдання 3. Заповнення власної зони
 
-Вивід `zone-reload`:
+Вивід `named-checkzone` та `rndc reload`:
 
 ```text
+$ named-checkzone se-1-05.lab /lab/zone/se-1-05.lab.zone
+zone se-1-05.lab/IN: loaded serial 2026112406
+OK
 
+$ rndc reload se-1-05.lab
+zone reload up-to-date
 ```
 
 <!-- Шість запитів до 10.53.1.1 з +norec, по одному на кожен рядок таблиці картки. -->
 
 | Запис | status | Прапорець `aa` | Значення в ANSWER | TTL | Відповідає картці (так/ні) |
 |---|---|---|---|---|---|
-| `www` A | | | | | |
-| псевдонім CNAME | | | | | |
-| `mail` A | | | | | |
-| `@` MX | | | | | |
-| `@` TXT | | | | | |
-| другий хост A | | | | | |
+| `www` A | NOERROR | Так | 10.53.0.81 | 75 | Так |
+| `api` CNAME | NOERROR | Так | www.se-1-05.lab. | 75 | Так |
+| `mail` A | NOERROR | Так | 10.53.0.80 | 75 | Так |
+| `@` MX | NOERROR | Так | 20 mail.se-1-05.lab. | 75 | Так |
+| `@` TXT | NOERROR | Так | "lab-token=4e049af2" | 75 | Так |
+| `lab` A | NOERROR | Так | 10.53.0.81 | 40 | Так |
 
 Порівняння відповідей резолвера та власного сервера:
 
 ```text
+; <<>> DiG 9.18.39-0ubuntu0.24.04.9-Ubuntu <<>> @10.53.0.53 api.se-1-05.lab A
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 393
+;; flags: qr rd ra; QUERY: 1, ANSWER: 2, AUTHORITY: 0, ADDITIONAL: 1
 
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;api.se-1-05.lab.               IN      A
+
+;; ANSWER SECTION:
+api.se-1-05.lab.        75      IN      CNAME   www.se-1-05.lab.
+www.se-1-05.lab.        75      IN      A       10.53.0.81
+
+;; Query time: 1 msec
+;; SERVER: 10.53.0.53#53(10.53.0.53) (UDP)
+;; WHEN: Wed Nov 25 07:59:43 UTC 2026
+;; MSG SIZE  rcvd: 78
+
+
+; <<>> DiG 9.18.39-0ubuntu0.24.04.9-Ubuntu <<>> @10.53.1.1 api.se-1-05.lab A +norec
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 5491
+;; flags: qr aa; QUERY: 1, ANSWER: 2, AUTHORITY: 1, ADDITIONAL: 2
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: cca89d3ab4f60c0a010000006b06956f9211b1f71db08abf (good)
+;; QUESTION SECTION:
+;api.se-1-05.lab.               IN      A
+
+;; ANSWER SECTION:
+api.se-1-05.lab.        75      IN      CNAME   www.se-1-05.lab.
+www.se-1-05.lab.        75      IN      A       10.53.0.81
+
+;; AUTHORITY SECTION:
+se-1-05.lab.            75      IN      NS      ns.se-1-05.lab.
+
+;; ADDITIONAL SECTION:
+ns.se-1-05.lab.         75      IN      A       10.53.1.1
+
+;; Query time: 0 msec
+;; SERVER: 10.53.1.1#53(10.53.1.1) (UDP)
+;; WHEN: Wed Nov 25 07:59:43 UTC 2026
+;; MSG SIZE  rcvd: 139
+
+
+; <<>> DiG 9.18.39-0ubuntu0.24.04.9-Ubuntu <<>> @10.53.0.53 se-1-05.lab MX
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 63603
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;se-1-05.lab.                   IN      MX
+
+;; ANSWER SECTION:
+se-1-05.lab.            75      IN      MX      20 mail.se-1-05.lab.
+
+;; Query time: 1 msec
+;; SERVER: 10.53.0.53#53(10.53.0.53) (UDP)
+;; WHEN: Wed Nov 25 07:59:43 UTC 2026
+;; MSG SIZE  rcvd: 61
+
+
+; <<>> DiG 9.18.39-0ubuntu0.24.04.9-Ubuntu <<>> @10.53.1.1 se-1-05.lab MX +norec
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 21044
+;; flags: qr aa; QUERY: 1, ANSWER: 1, AUTHORITY: 1, ADDITIONAL: 3
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+; COOKIE: 3c40db724302f165010000006b06956f07c6795ba0cfc3db (good)
+;; QUESTION SECTION:
+;se-1-05.lab.                   IN      MX
+
+;; ANSWER SECTION:
+se-1-05.lab.            75      IN      MX      20 mail.se-1-05.lab.
+
+;; AUTHORITY SECTION:
+se-1-05.lab.            75      IN      NS      ns.se-1-05.lab.
+
+;; ADDITIONAL SECTION:
+mail.se-1-05.lab.       75      IN      A       10.53.0.80
+ns.se-1-05.lab.         75      IN      A       10.53.1.1
+
+;; Query time: 0 msec
+;; SERVER: 10.53.1.1#53(10.53.1.1) (UDP)
+;; WHEN: Wed Nov 25 07:59:43 UTC 2026
+;; MSG SIZE  rcvd: 138
 ```
 
 | Запит | flags | ANSWER (кількість, типи) | AUTHORITY (кількість, типи) | ADDITIONAL (кількість, типи) | TTL |
 |---|---|---|---|---|---|
-| псевдонім через resolver-a | | | | | |
-| псевдонім через 10.53.1.1 | | | | | |
-| MX через resolver-a | | | | | |
-| MX через 10.53.1.1 | | | | | |
+| псевдонім через resolver-a | qr rd ra | 2 (CNAME, A) | 0 | 1 (OPT) | 75 |
+| псевдонім через 10.53.1.1 | qr aa | 2 (CNAME, A) | 1 (NS) | 2 (A, OPT) | 75 |
+| MX через resolver-a | qr rd ra | 1 (MX) | 0 | 1 (OPT) | 75 |
+| MX через 10.53.1.1 | qr aa | 1 (MX) | 1 (NS) | 3 (2 A, OPT) | 75 |
 
 Пояснення відмінностей:
-
-Повідомлення `zone-check` після тимчасового додавання `@ IN CNAME www`:
+Авторитативний сервер повертає відповіді з прапорцем aa, а резолвер — з прапорцями rd та ra. Значення DNS-записів збігаються, але кількість записів у секціях AUTHORITY та ADDITIONAL відрізняється. Під час повторного запиту TTL псевдоніма через обидва сервери становив 75 секунд. Під час зберігання записів у кеші резолвера TTL поступово зменшується.
+Повідомлення `named-checkzone` після тимчасового додавання `@ IN CNAME www`:
 
 ```text
-
+dns_master_load: /tmp/test.zone:24: se-1-05.lab: CNAME and other data
+zone se-1-05.lab/IN: loading from master file /tmp/test.zone failed: CNAME and other data
+zone se-1-05.lab/IN: not loaded due to errors.
 ```
 
 1. Який TTL має кожен запис зони і звідки це значення взято?
-
+Записи www, api, mail, MX, TXT та NS мають TTL 75 секунд, оскільки успадковують значення з директиви $TTL 75. Для запису lab окремо встановлено TTL 40 секунд, а для запису SOA — 120 секунд.
 2. Скільки записів містить секція ANSWER у відповіді на запит псевдоніма і чому?
-
+Секція ANSWER містить два записи: CNAME та A. Перший запис вказує, що api є псевдонімом www, а другий містить IP-адресу www — 10.53.0.81.
 3. Чому запис CNAME неможливо розмістити для імені `@`?
-
+Запис CNAME неможливо розмістити для імені @, оскільки воно позначає вершину DNS-зони, де вже існують записи SOA, NS, MX і TXT. Запис CNAME не може співіснувати з такими записами для одного імені. Це підтверджує отримана помилка CNAME and other data.
 ## Завдання 4. TTL і видимість змін
 
-Два запити з інтервалом 5 с:
+Два повторні запити з інтервалом 5 с після зміни IP-адреси:
 
 ```text
 
-Tue Nov 24 18:23:24 UTC 2026
-www.se-1-05.lab.  75  IN  A  10.53.0.80
-Tue Nov 24 18:23:29 UTC 2026
+Wed Nov 25 08:11:48 UTC 2026
+www.se-1-05.lab. 75 IN A 10.53.0.81
+Wed Nov 25 08:11:53 UTC 2026
+www.se-1-05.lab. 70 IN A 10.53.0.81
 ```
 
 **Прогноз** (записати до вимірювання). Формула часу появи нової адреси через залишок R, найбільша можлива затримка:
@@ -245,7 +502,7 @@ www.se-1-05.lab.  75  IN  A  10.53.0.81
 
 Рядок `server:` з відповіді `curl`:
 
-Server: nginx/1.24.0 (Ubuntu)
+server: web-b
 
 | Час зміни | Очікуваний час | Спостережений час | Виміряна затримка, с | Прогноз, с |
 |---|---|---|---|---|
@@ -433,49 +690,93 @@ TLD (10.53.0.3):
 Кешування запису в обох резолверах (крок 2) і час зупинки сервера (крок 3):
 
 ```text
+resolver-a:
+www.se-1-05.lab. 54 IN A 10.53.0.81
 
+resolver-b:
+www.se-1-05.lab. 53 IN A 10.53.0.81
+
+Wed Nov 25 08:18:44 UTC 2026
+Container dnslab-se-1-05-1 Stopped
+
+Wed Nov 25 08:20:04 UTC 2026
 ```
 
 Запити із заміром часу (крок 5):
 
 ```text
+resolver-a, перший запит:
+;; no servers could be reached
+real    0m5.142s
 
+resolver-a, другий запит:
+status: SERVFAIL
+ANSWER: 0
+;; Query time: 182 msec
+real    0m0.329s
+
+resolver-b:
+status: NOERROR
+ANSWER: 1
+www.se-1-05.lab. 30 IN A 10.53.0.81
+;; Query time: 800 msec
+real    0m1.962s
 ```
 
-| Запит | status або тайм-аут | ANSWER, TTL | `real` |
+| Запит | status або тайм-аут | ANSWER, TTL | real |
 |---|---|---|---|
-| resolver-a, перший | | | |
-| resolver-a, другий | | | |
-| resolver-b | | | |
+| resolver-a, перший | Тайм-аут | Відсутня відповідь | 5,142 с |
+| resolver-a, другий | SERVFAIL | 0, TTL відсутній | 0,329 с |
+| resolver-b | NOERROR | 1, TTL 30 с | 1,962 с |
 
-Час `named-start` і вивід циклу спостереження до першої успішної відповіді (крок 6):
+Час запуску сервера через `docker compose start` та результат окремого контрольного запиту (крок 6):
 
 ```text
+Wed Nov 25 08:21:40 UTC 2026
+Container dnslab-se-1-05-1 Started
 
+status: NOERROR
+ANSWER: 1
+www.se-1-05.lab. 75 IN A 10.53.0.81
+;; Query time: 1 msec
+;; WHEN: Wed Nov 25 08:21:46 UTC 2026
+
+Час до першої зафіксованої успішної відповіді: 6 секунд.
 ```
 
-Перевірка після завдання (`dig @10.53.1.1 sNN.lab SOA +norec +short`):
+Перевірка після завдання (`dig @10.53.1.1 se-1-05.lab SOA +norec +short`):
 
 ```text
-
+ns.se-1-05.lab. admin.se-1-05.lab. 2026112406 3600 600 86400 20
 ```
 
 ### Постмортем
 
-1. Що сталося:
-2. Вплив на клієнтів resolver-a і resolver-b:
-3. Хронологія з виміряним часом:
-4. Чому кеш допоміг або не допоміг:
-5. Що слід змінити:
+1. Що сталося: було зупинено авторитативний DNS-сервер зони se-1-05.lab та дочекано завершення TTL кешованих записів.
+
+2. Вплив на клієнтів resolver-a і resolver-b: resolver-a повернув тайм-аут, а при повторному запиті — SERVFAIL. Resolver-b повернув IP-адресу 10.53.0.81 із застарілого кешу.
+
+3. Хронологія з виміряним часом: сервер зупинено о 08:18:44 UTC, повторно запущено о 08:21:40 UTC. Першу успішну відповідь після запуску зафіксовано о 08:21:46 UTC.
+
+4. Чому кеш допоміг або не допоміг: resolver-a після завершення TTL не зміг отримати актуальний запис. Resolver-b завдяки механізму serve-expired повернув застарілий запис із TTL 30 секунд.
+
+5. Що слід змінити: передбачити резервний авторитативний DNS-сервер, налаштувати моніторинг доступності та використовувати механізм serve-expired для підвищення відмовостійкості.
 
 1. Який TTL мав запис у відповіді resolver-b і навіщо такий TTL?
 
-2. Порівняйте результат і тривалість двох запитів до resolver-a. Якщо вони різняться, сформулюйте гіпотезу щодо причини; якщо ні, поясніть, що робить резолвер протягом цього часу.
+Відповідь: TTL становив 30 секунд. Такий короткий TTL дозволяє тимчасово використовувати застарілий запис із кешу, не зберігаючи його надовго на стороні клієнта.
 
-3. Чому після `named-start` ім'я через resolver-a зарезолвилося не одразу?
+2. Порівняйте результат і тривалість двох запитів до resolver-a.
+
+Відповідь: перший запит завершився тайм-аутом за 5,142 секунди, а другий повернув SERVFAIL за 0,329 секунди. Ймовірно, резолвер запам'ятав інформацію про недоступність авторитативного сервера, тому повторний запит завершився швидше.
+
+3. Чому після named-start ім'я через resolver-a зарезолвилося не одразу?
+
+Відповідь: можливою причиною є тимчасове кешування помилки SERVFAIL. У нашому експерименті успішну відповідь зафіксовано через 6 секунд після запуску контейнера. Точний момент відновлення не визначався, оскільки перевірку виконано окремим запитом.
 
 4. У якій ситуації serve-stale шкодить, а не допомагає? Пов'яжіть відповідь із завданням 4.
 
+Відповідь: механізм serve-stale може зашкодити, якщо IP-адреса ресурсу змінилася, а резолвер продовжує повертати старий запис із кешу. У такому випадку клієнт звертатиметься до старої IP-адреси, навіть якщо DNS-запис уже оновлено.
 ## Фінальний файл зони
 
 <!-- Повний вміст stand/students/sNN/zone/sNN.lab.zone після завершення роботи. -->
